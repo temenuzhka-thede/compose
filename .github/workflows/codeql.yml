@@ -1,0 +1,68 @@
+name: codeql
+
+on:
+  push:
+    branches: 
+       - 'main'
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.yaml'
+      - '**/*_test.go'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/*.yaml'
+      - '**/*_test.go'
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: 'ubuntu-latest'
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: 
+          - go
+        os: 
+          - 'linux'
+          - 'windows'
+          - 'darwin'
+
+    steps:
+    - 
+      name: Checkout repository
+      uses: actions/checkout@v4
+    - 
+      name: Update Go
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: go.mod
+    - 
+      name: Install dependencies
+      if: matrix.os == 'linux'
+      run: |
+        sudo apt-get install pkg-config build-essential libseccomp-dev
+        export PKG_CONFIG_PATH=/usr/lib/pkgconfig:$PKG_CONFIG_PATH
+    - 
+      name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+    - 
+      name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+      env:
+        GOOS: ${{ matrix.os }}
+        CGO_ENABLED: ${{ (matrix.os == 'darwin' && '1') || '0' }}
+    - 
+      name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+      with:
+        category: "/language:${{matrix.language}}/os:${{matrix.os}}"
